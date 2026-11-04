@@ -1,6 +1,5 @@
 package fr.efrei.residence;
 
-import fr.efrei.residence.contrat.Canal;
 import fr.efrei.residence.contrat.DemandeAttribution;
 import fr.efrei.residence.contrat.DemandeDevis;
 import fr.efrei.residence.contrat.DemandeInscription;
@@ -8,14 +7,12 @@ import fr.efrei.residence.contrat.DemandeLogement;
 import fr.efrei.residence.contrat.EtatBail;
 import fr.efrei.residence.contrat.EtatLogement;
 import fr.efrei.residence.contrat.Notification;
-import fr.efrei.residence.contrat.Option;
-import fr.efrei.residence.contrat.StatutBail;
 import fr.efrei.residence.contrat.SystemeResidence;
-import fr.efrei.residence.contrat.TypeLogement;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -44,14 +41,16 @@ public class NouveauSystemeAdapter implements SystemeResidence {
     @Override
     public Optional<String> inscrire(DemandeInscription d) {
         Etudiant e = gestion.inscrireEtudiant(d.nom(), d.prenom(), d.email(), d.telephone(), d.adresse(),
-                d.profil().name(), d.echelonBourse(), d.ressourcesMensuelles(), d.pmr(), d.canalPrefere().name());
+                traduire(d.profil(), Profil.class), d.echelonBourse(), d.ressourcesMensuelles(), d.pmr(),
+                traduire(d.canalPrefere(), Canal.class));
         return Optional.ofNullable(e).map(Etudiant::getId);
     }
 
     @Override
     public boolean ajouterLogement(DemandeLogement d) {
-        int param = d.type() == TypeLogement.COLOCATION ? d.places() : d.surfaceBalcon();
-        return gestion.ajouterLogement(d.type().name(), d.numero(), d.surface(), d.etage(), d.meuble(), param) != null;
+        TypeLogement type = traduire(d.type(), TypeLogement.class);
+        int param = type == TypeLogement.COLOCATION ? d.places() : d.surfaceBalcon();
+        return gestion.ajouterLogement(type, d.numero(), d.surface(), d.etage(), d.meuble(), param) != null;
     }
 
     @Override
@@ -66,7 +65,8 @@ public class NouveauSystemeAdapter implements SystemeResidence {
         } else {
             occupants = l.estLibre() ? 0 : 1;
         }
-        return Optional.of(new EtatLogement(l.getNumero(), TypeLogement.valueOf(l.getType()), l.getNombrePlaces(),
+        return Optional.of(new EtatLogement(l.getNumero(),
+                traduire(l.getType(), fr.efrei.residence.contrat.TypeLogement.class), l.getNombrePlaces(),
                 occupants, l.estAccessiblePMR()));
     }
 
@@ -76,10 +76,8 @@ public class NouveauSystemeAdapter implements SystemeResidence {
         if (l == null) {
             return OptionalDouble.empty();
         }
-        Set<Option> o = d.options();
-        return OptionalDouble.of(new CalculateurLoyer().calculerLoyer(l, d.profil().name(), d.echelonBourse(),
-                o.contains(Option.PARKING), o.contains(Option.MENAGE), o.contains(Option.LAVERIE),
-                o.contains(Option.FIBRE), o.contains(Option.ASSURANCE)));
+        return OptionalDouble.of(new CalculateurLoyer().calculerLoyer(l, traduire(d.profil(), Profil.class),
+                d.echelonBourse(), traduire(d.options())));
     }
 
     @Override
@@ -88,9 +86,8 @@ public class NouveauSystemeAdapter implements SystemeResidence {
         if (e == null) {
             return Optional.empty();
         }
-        Set<Option> o = d.options();
-        Bail b = gestion.attribuerLogement(e, d.type().name(), o.contains(Option.PARKING), o.contains(Option.MENAGE),
-                o.contains(Option.LAVERIE), o.contains(Option.FIBRE), o.contains(Option.ASSURANCE), d.dateSignature());
+        Bail b = gestion.attribuerLogement(e, traduire(d.type(), TypeLogement.class), traduire(d.options()),
+                d.dateSignature());
         return Optional.ofNullable(b).map(Bail::getId);
     }
 
@@ -100,7 +97,8 @@ public class NouveauSystemeAdapter implements SystemeResidence {
         if (b == null) {
             return Optional.empty();
         }
-        return Optional.of(new EtatBail(b.getId(), b.getLogement().getNumero(), StatutBail.valueOf(b.getStatut()),
+        return Optional.of(new EtatBail(b.getId(), b.getLogement().getNumero(),
+                traduire(b.getStatut(), fr.efrei.residence.contrat.StatutBail.class),
                 b.getLoyerHorsCharges(), b.getCharges(), b.getLoyerChargesComprises(), b.getCaution(),
                 b.getFraisDossier(), b.getDateFin(), b.soldeDu, b.cautionRestituee));
     }
@@ -149,13 +147,13 @@ public class NouveauSystemeAdapter implements SystemeResidence {
     public List<Notification> notifications() {
         List<Notification> notifications = new ArrayList<>();
         for (String[] email : EmailService.journal) {
-            notifications.add(new Notification(Canal.EMAIL, email[0], email[1]));
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.EMAIL, email[0], email[1]));
         }
         for (String[] sms : SmsService.journal) {
-            notifications.add(new Notification(Canal.SMS, sms[0], sms[1]));
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.SMS, sms[0], sms[1]));
         }
         for (String[] courrier : CourrierService.journal) {
-            notifications.add(new Notification(Canal.COURRIER, courrier[0], courrier[1]));
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.COURRIER, courrier[0], courrier[1]));
         }
         return notifications;
     }
@@ -165,5 +163,17 @@ public class NouveauSystemeAdapter implements SystemeResidence {
             if (e.getId().equals(ref)) return e;
         }
         return null;
+    }
+
+    private static <E extends Enum<E>> E traduire(Enum<?> valeur, Class<E> type) {
+        return Enum.valueOf(type, valeur.name());
+    }
+
+    private static Set<Option> traduire(Set<fr.efrei.residence.contrat.Option> options) {
+        Set<Option> traduites = EnumSet.noneOf(Option.class);
+        for (fr.efrei.residence.contrat.Option o : options) {
+            traduites.add(traduire(o, Option.class));
+        }
+        return traduites;
     }
 }

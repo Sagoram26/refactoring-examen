@@ -3,6 +3,8 @@ package fr.efrei.residence;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class Bail {
 
@@ -12,18 +14,14 @@ public class Bail {
     private LocalDate dateSignature;
     private LocalDate dateEntree;
     private LocalDate dateFin;
-    private String statut;
+    private StatutBail statut;
 
     private double loyerHorsCharges;
     private double charges;
     private double caution;
     private double fraisDossier;
 
-    public boolean parking;
-    public boolean menage;
-    public boolean laverie;
-    public boolean fibre;
-    public boolean assurance;
+    public Set<Option> options;
 
     public List<Paiement> paiements = new ArrayList<Paiement>();
     public double soldeDu = 0;
@@ -35,7 +33,7 @@ public class Bail {
         this.etudiant = etudiant;
         this.logement = logement;
         this.dateSignature = dateSignature;
-        this.statut = "SIGNE";
+        this.statut = StatutBail.SIGNE;
     }
 
     public String getId() { return id; }
@@ -46,8 +44,8 @@ public class Bail {
     public void setDateEntree(LocalDate d) { this.dateEntree = d; }
     public LocalDate getDateFin() { return dateFin; }
     public void setDateFin(LocalDate d) { this.dateFin = d; }
-    public String getStatut() { return statut; }
-    public void setStatut(String statut) { this.statut = statut; }
+    public StatutBail getStatut() { return statut; }
+    public void setStatut(StatutBail statut) { this.statut = statut; }
     public double getLoyerHorsCharges() { return loyerHorsCharges; }
     public void setLoyerHorsCharges(double l) { this.loyerHorsCharges = l; }
     public double getCharges() { return charges; }
@@ -59,14 +57,8 @@ public class Bail {
     public void setFraisDossier(double f) { this.fraisDossier = f; }
 
     public String listerOptions() {
-        String s = "";
-        if (menage) s = s + "ménage, ";
-        if (parking) s = s + "parking, ";
-        if (laverie) s = s + "laverie, ";
-        if (fibre) s = s + "fibre, ";
-        if (assurance) s = s + "assurance, ";
-        if (s.length() == 0) return "aucune";
-        return s.substring(0, s.length() - 2);
+        if (options.isEmpty()) return "aucune";
+        return options.stream().map(Option::getLibelle).collect(Collectors.joining(", "));
     }
 
     public String genererQuittance(String mois) {
