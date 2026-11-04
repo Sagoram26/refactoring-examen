@@ -5,12 +5,14 @@ import java.util.List;
 
 public class Colocation extends Logement {
 
+    private static final int PLACES_MIN = 2;
+
     private int places;
     private List<Etudiant> colocataires = new ArrayList<Etudiant>();
 
     public Colocation(String numero, double surface, int etage, boolean meuble, int places) {
         super(numero, TypeLogement.COLOCATION, surface, etage, meuble);
-        this.places = places;
+        this.places = Math.max(places, PLACES_MIN);
     }
 
     @Override
