@@ -4,11 +4,18 @@ import java.util.List;
 
 public class T2 extends Logement {
 
+    private static final double PRIX_M2 = 12;
+    private static final double FORFAIT = 100;
+
     private double surfaceBalcon;
 
     public T2(String numero, double surface, int etage, boolean meuble, double surfaceBalcon) {
         super(numero, TypeLogement.T2, surface, etage, meuble);
         this.surfaceBalcon = surfaceBalcon;
+    }
+
+    public double loyerDeBase() {
+        return surface * PRIX_M2 + FORFAIT;
     }
 
     public void ajouterColocataire(Etudiant e) {

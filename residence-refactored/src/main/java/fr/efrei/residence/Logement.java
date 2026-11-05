@@ -10,6 +10,9 @@ public abstract class Logement implements ILogement {
     protected Etudiant occupant;
 
     private static final String BATIMENT_AVEC_ASCENSEUR = "A";
+    private static final double CHARGES = 35;
+    private static final double MAJORATION_MENAGE = 1.08;
+    private static final double PRIX_FIBRE = 20;
 
     public Logement(String numero, TypeLogement type, double surface, int etage, boolean meuble) {
         this.numero = numero;
@@ -25,6 +28,24 @@ public abstract class Logement implements ILogement {
     public int getEtage() { return etage; }
     public boolean isMeuble() { return meuble; }
     public Etudiant getOccupant() { return occupant; }
+
+    public abstract double loyerDeBase();
+
+    public double charges() {
+        return CHARGES;
+    }
+
+    public double tauxMenage() {
+        return MAJORATION_MENAGE;
+    }
+
+    public double prixFibre() {
+        return PRIX_FIBRE;
+    }
+
+    public int getNombreOccupants() {
+        return occupant == null ? 0 : 1;
+    }
 
     public boolean estLibre() {
         return occupant == null;

@@ -6,6 +6,10 @@ import java.util.List;
 public class Colocation extends Logement {
 
     private static final int PLACES_MIN = 2;
+    private static final double PRIX_M2 = 11;
+    private static final double CHARGES_COLOCATION = 25;
+    private static final double MAJORATION_MENAGE_COLOCATION = 1.04;
+    private static final double PRIX_FIBRE_COLOCATION = 0;
 
     private int places;
     private List<Etudiant> colocataires = new ArrayList<Etudiant>();
@@ -13,6 +17,30 @@ public class Colocation extends Logement {
     public Colocation(String numero, double surface, int etage, boolean meuble, int places) {
         super(numero, TypeLogement.COLOCATION, surface, etage, meuble);
         this.places = Math.max(places, PLACES_MIN);
+    }
+
+    public double loyerDeBase() {
+        return surface * PRIX_M2 / places;
+    }
+
+    @Override
+    public double charges() {
+        return CHARGES_COLOCATION;
+    }
+
+    @Override
+    public double tauxMenage() {
+        return MAJORATION_MENAGE_COLOCATION;
+    }
+
+    @Override
+    public double prixFibre() {
+        return PRIX_FIBRE_COLOCATION;
+    }
+
+    @Override
+    public int getNombreOccupants() {
+        return colocataires.size();
     }
 
     @Override
