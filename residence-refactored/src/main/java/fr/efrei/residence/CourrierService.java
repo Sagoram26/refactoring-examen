@@ -6,8 +6,11 @@ import java.util.List;
 public class CourrierService implements CanalNotification {
 
     public static final double PRIX_TIMBRE = 1.29;
-    public static double totalAffranchissement = 0;
-    public static List<String[]> journal = new ArrayList<String[]>();
+    private double totalAffranchissement = 0;
+    private final List<String[]> journal = new ArrayList<String[]>();
+
+    public double getTotalAffranchissement() { return totalAffranchissement; }
+    public List<String[]> getJournal() { return journal; }
 
     public void notifier(Etudiant e, String sujet, String message) {
         imprimerEtPoster(e.getNomComplet(), e.getAdresse(), sujet, message);

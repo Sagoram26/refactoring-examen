@@ -9,8 +9,11 @@ public class SmsService implements CanalNotification {
     private static final int LONGUEUR_MAX_SMS = 160;
     private static final String SUITE = "...";
 
-    public static int compteurSms = 0;
-    public static List<String[]> journal = new ArrayList<String[]>();
+    private int compteurSms = 0;
+    private final List<String[]> journal = new ArrayList<String[]>();
+
+    public int getCompteurSms() { return compteurSms; }
+    public List<String[]> getJournal() { return journal; }
 
     public void notifier(Etudiant e, String sujet, String message) {
         envoyerSms(e.getTelephone(), sujet + " - " + message);

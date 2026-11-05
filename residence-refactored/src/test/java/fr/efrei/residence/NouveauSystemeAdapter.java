@@ -20,27 +20,39 @@ import java.util.Set;
 
 public class NouveauSystemeAdapter implements SystemeResidence {
 
-    private GestionResidence gestion;
+    private Database db;
+    private EmailService email;
+    private SmsService sms;
+    private CourrierService courrier;
+    private Residence residence;
+    private CalculateurLoyer calculateur;
+    private ServiceInscription inscription;
+    private ServiceAttribution attribution;
+    private ServiceBail baux;
+    private ServiceRelance relances;
+    private Rapport rapport;
+    private Quittance quittance;
 
     @Override
     public void reinitialiser() {
-        Database.getInstance();
-        Database.etudiants.clear();
-        Database.baux.clear();
-        EmailService.journal.clear();
-        SmsService.journal.clear();
-        CourrierService.journal.clear();
-        SmsService.compteurSms = 0;
-        CourrierService.totalAffranchissement = 0;
-        Etudiant.compteur = 0;
-        GestionResidence.compteurBail = 0;
-        Residence.initialiser();
-        gestion = new GestionResidence();
+        db = new Database();
+        email = new EmailService();
+        sms = new SmsService();
+        courrier = new CourrierService();
+        Notificateur notificateur = new Notificateur(new CanalFactory(email, sms, courrier), email);
+        residence = new Residence();
+        calculateur = new CalculateurLoyer();
+        inscription = new ServiceInscription(db);
+        attribution = new ServiceAttribution(residence, db, calculateur, notificateur);
+        baux = new ServiceBail(db, notificateur);
+        relances = new ServiceRelance(db, notificateur);
+        rapport = new Rapport(residence, db, sms, courrier);
+        quittance = new Quittance();
     }
 
     @Override
     public Optional<String> inscrire(DemandeInscription d) {
-        Etudiant e = gestion.inscrireEtudiant(d.nom(), d.prenom(), d.email(), d.telephone(), d.adresse(),
+        Etudiant e = inscription.inscrireEtudiant(d.nom(), d.prenom(), d.email(), d.telephone(), d.adresse(),
                 traduire(d.profil(), Profil.class), d.echelonBourse(), d.ressourcesMensuelles(), d.pmr(),
                 traduire(d.canalPrefere(), Canal.class));
         return Optional.ofNullable(e).map(Etudiant::getId);
@@ -50,12 +62,12 @@ public class NouveauSystemeAdapter implements SystemeResidence {
     public boolean ajouterLogement(DemandeLogement d) {
         TypeLogement type = traduire(d.type(), TypeLogement.class);
         int param = type == TypeLogement.COLOCATION ? d.places() : d.surfaceBalcon();
-        return gestion.ajouterLogement(type, d.numero(), d.surface(), d.etage(), d.meuble(), param) != null;
+        return residence.ajouterLogement(type, d.numero(), d.surface(), d.etage(), d.meuble(), param) != null;
     }
 
     @Override
     public Optional<EtatLogement> logement(String numero) {
-        Logement l = Residence.trouver(numero);
+        Logement l = residence.trouver(numero);
         if (l == null) {
             return Optional.empty();
         }
@@ -72,28 +84,28 @@ public class NouveauSystemeAdapter implements SystemeResidence {
 
     @Override
     public OptionalDouble devisLoyer(DemandeDevis d) {
-        Logement l = Residence.trouver(d.numeroLogement());
+        Logement l = residence.trouver(d.numeroLogement());
         if (l == null) {
             return OptionalDouble.empty();
         }
-        return OptionalDouble.of(new CalculateurLoyer().calculerLoyer(l, traduire(d.profil(), Profil.class),
+        return OptionalDouble.of(calculateur.calculerLoyer(l, traduire(d.profil(), Profil.class),
                 d.echelonBourse(), traduire(d.options())));
     }
 
     @Override
     public Optional<String> attribuer(DemandeAttribution d) {
-        Etudiant e = etudiant(d.refEtudiant());
+        Etudiant e = db.trouverEtudiantParId(d.refEtudiant());
         if (e == null) {
             return Optional.empty();
         }
-        Bail b = gestion.attribuerLogement(e, traduire(d.type(), TypeLogement.class), traduire(d.options()),
+        Bail b = attribution.attribuerLogement(e, traduire(d.type(), TypeLogement.class), traduire(d.options()),
                 d.dateSignature());
         return Optional.ofNullable(b).map(Bail::getId);
     }
 
     @Override
     public Optional<EtatBail> consulter(String idBail) {
-        Bail b = Database.baux.get(idBail);
+        Bail b = db.trouverBail(idBail);
         if (b == null) {
             return Optional.empty();
         }
@@ -105,64 +117,57 @@ public class NouveauSystemeAdapter implements SystemeResidence {
 
     @Override
     public boolean entrer(String idBail, LocalDate date) {
-        return gestion.entrerDansLesLieux(idBail, date);
+        return baux.entrerDansLesLieux(idBail, date);
     }
 
     @Override
     public boolean payer(String idBail, YearMonth mois, LocalDate date, double montant) {
-        return gestion.payerLoyer(idBail, mois.toString(), date, montant);
+        return baux.payerLoyer(idBail, mois.toString(), date, montant);
     }
 
     @Override
     public boolean donnerPreavis(String idBail, LocalDate date) {
-        return gestion.donnerPreavis(idBail, date);
+        return baux.donnerPreavis(idBail, date);
     }
 
     @Override
     public boolean sortir(String idBail, LocalDate date, double retenuesDegats) {
-        return gestion.sortir(idBail, date, retenuesDegats);
+        return baux.sortir(idBail, date, retenuesDegats);
     }
 
     @Override
     public boolean annuler(String idBail) {
-        return gestion.annulerBail(idBail);
+        return baux.annulerBail(idBail);
     }
 
     @Override
     public Optional<String> quittance(String idBail, YearMonth mois) {
-        return Optional.ofNullable(Database.baux.get(idBail)).map(b -> b.genererQuittance(mois.toString()));
+        return Optional.ofNullable(db.trouverBail(idBail)).map(b -> quittance.generer(b, mois.toString()));
     }
 
     @Override
     public void relancerImpayes() {
-        gestion.relancerImpayes();
+        relances.relancerImpayes();
     }
 
     @Override
     public String rapport() {
-        return gestion.genererRapport();
+        return rapport.genererRapport();
     }
 
     @Override
     public List<Notification> notifications() {
         List<Notification> notifications = new ArrayList<>();
-        for (String[] email : EmailService.journal) {
-            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.EMAIL, email[0], email[1]));
+        for (String[] e : email.getJournal()) {
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.EMAIL, e[0], e[1]));
         }
-        for (String[] sms : SmsService.journal) {
-            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.SMS, sms[0], sms[1]));
+        for (String[] s : sms.getJournal()) {
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.SMS, s[0], s[1]));
         }
-        for (String[] courrier : CourrierService.journal) {
-            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.COURRIER, courrier[0], courrier[1]));
+        for (String[] c : courrier.getJournal()) {
+            notifications.add(new Notification(fr.efrei.residence.contrat.Canal.COURRIER, c[0], c[1]));
         }
         return notifications;
-    }
-
-    private static Etudiant etudiant(String ref) {
-        for (Etudiant e : Database.etudiants.values()) {
-            if (e.getId().equals(ref)) return e;
-        }
-        return null;
     }
 
     private static <E extends Enum<E>> E traduire(Enum<?> valeur, Class<E> type) {

@@ -2,11 +2,21 @@ package fr.efrei.residence;
 
 public class CanalFactory {
 
-    public static CanalNotification creer(Canal canal) {
+    private final EmailService email;
+    private final SmsService sms;
+    private final CourrierService courrier;
+
+    public CanalFactory(EmailService email, SmsService sms, CourrierService courrier) {
+        this.email = email;
+        this.sms = sms;
+        this.courrier = courrier;
+    }
+
+    public CanalNotification creer(Canal canal) {
         return switch (canal) {
-            case EMAIL -> new EmailService();
-            case SMS -> new SmsService();
-            case COURRIER -> new CourrierService();
+            case EMAIL -> email;
+            case SMS -> sms;
+            case COURRIER -> courrier;
         };
     }
 }

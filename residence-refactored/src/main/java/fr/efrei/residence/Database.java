@@ -5,22 +5,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Database {
+public class Database implements EtudiantRepository, BailRepository {
 
-    private static Database instance;
+    private final Map<String, Etudiant> etudiants = new HashMap<String, Etudiant>();
+    private final Map<String, Bail> baux = new HashMap<String, Bail>();
 
-    public static Map<String, Etudiant> etudiants = new HashMap<String, Etudiant>();
-    public static Map<String, Bail> baux = new HashMap<String, Bail>();
-
-    private Database() {
+    public Database() {
         System.out.println("[DB] Connexion à jdbc:postgresql://db.campusvert.local:5432/residence");
-    }
-
-    public static Database getInstance() {
-        if (instance == null) {
-            instance = new Database();
-        }
-        return instance;
     }
 
     public void executer(String sql) {
@@ -35,6 +26,14 @@ public class Database {
     public Etudiant trouverEtudiantParEmail(String email) {
         executer("SELECT * FROM etudiant WHERE email = '" + email + "'");
         return etudiants.get(email);
+    }
+
+    public Etudiant trouverEtudiantParId(String id) {
+        executer("SELECT * FROM etudiant WHERE id = '" + id + "'");
+        for (Etudiant e : etudiants.values()) {
+            if (e.getId().equals(id)) return e;
+        }
+        return null;
     }
 
     public void sauvegarderBail(Bail b) {

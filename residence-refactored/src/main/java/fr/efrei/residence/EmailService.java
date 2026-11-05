@@ -8,7 +8,9 @@ public class EmailService implements CanalNotification {
     public static final String SMTP_HOST = "smtp.campusvert.fr";
     public static final String EXPEDITEUR = "gestion@campusvert.fr";
 
-    public static List<String[]> journal = new ArrayList<String[]>();
+    private final List<String[]> journal = new ArrayList<String[]>();
+
+    public List<String[]> getJournal() { return journal; }
 
     public void notifier(Etudiant e, String sujet, String message) {
         envoyer(e.getEmail(), sujet, message);
@@ -19,7 +21,7 @@ public class EmailService implements CanalNotification {
                 "Bonjour " + e.getPrenom() + ", il reste " + Utils.euros(solde) + " à régler sur le bail " + idBail + ".");
     }
 
-    public static boolean envoyer(String destinataire, String sujet, String corps) {
+    public boolean envoyer(String destinataire, String sujet, String corps) {
         try {
             if (!Utils.emailValide(destinataire)) {
                 throw new Exception("Adresse invalide");
